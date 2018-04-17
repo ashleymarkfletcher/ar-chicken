@@ -1,0 +1,22 @@
+
+newmtl 0.BaseMaterial
+Kd  0.67717504 0.35057664 0.09329424
+Ks  0.2 0.2 0.2
+Ka  00 00 00
+d  01
+Ns  00
+illum 2
+
+
+
+
+newmtl 1.BaseMaterial
+Kd  0.713918 0.55061276 0.43994476
+Ks  0.2 0.2 0.2
+Ka  00 00 00
+d  01
+Ns  00
+illum 2
+
+
+
