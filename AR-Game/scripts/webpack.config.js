@@ -2,6 +2,17 @@ const path = require('path')
 
 module.exports = {
   entry: './script.js',
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader'
+        }
+      }
+    ]
+  },
   output: {
     filename: 'script.js',
     path: path.resolve(__dirname, 'dist')

@@ -5,8 +5,8 @@
   "main": "script.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config webpack.config.js",
-    "watch": "parcel watch script.js --target=node"
+    "build": "webpack --mode production",
+    "dev": "webpack --watch --mode development"
   },
   "keywords": [],
   "author": "",
@@ -14,13 +14,9 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
     "babel-preset-env": "^1.6.1",
-    "parcel-bundler": "1.7.1",
     "webpack": "^4.6.0",
     "webpack-cli": "^2.0.15"
-  },
-  "alias": {
-    "Scene": "",
-    "react-dom": "./externals/react"
   }
 }
