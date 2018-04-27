@@ -6,6 +6,10 @@ var FaceTracking = require('FaceTracking')
 var Animation = require('Animation')
 var Reactive = require('Reactive')
 
+import countdown from './countdown'
+import collision from './collision'
+import randomNum from './random'
+
 // main scene objects
 var sceneRoot = Scene.root
   .child('Device')
@@ -45,18 +49,16 @@ var life2 = livesContainer.child('life2')
 var life3 = livesContainer.child('life3')
 var life4 = livesContainer.child('life4')
 var livesDisplayElements = [life0, life1, life2, life3, life4]
+const countdownContainer = sceneRoot.child('countdown')
+const countdownText = countdownContainer.child('text')
 
-import * as test from './test'
-
-Diagnostics.log('hello ' + test.hello(1, 2))
-
-const hey = () => 'hey'
-const yay = hey()
 // global score
 var score = 0
+var level2 = 10
 
 // speed/time of falling animation
-var chickenAnimationTime = 4000
+var startAnimationTime = 4000
+var chickenAnimationTime
 
 // x and y for hit detection
 var maxYdistance = 15
@@ -67,14 +69,23 @@ var initialLives = 5
 var lives = 0
 var gameState = 'start'
 
+var fallMode = 'single' // 'multiple' - how many chickens at once
+// var fallMode = 'multiple' //  - how many chickens at once
+
 var randomInterval = function(chicken) {
   var randomTime = Math.floor(Math.random() * 3000) + 1000 // 1000 - 4000
-  var elementName = chicken.element.name
 
   chicken.randomTimeId = Time.setTimeout(function() {
     chicken.element.hidden = false
     chicken.mover = moveChicken(chicken)
   }, randomTime)
+}
+
+var randomChicken = function() {
+  var randomChicken = randomNum(0, 3) // 0-2
+  var chicken = chickens[randomChicken]
+
+  chicken.mover = moveChicken(chicken)
 }
 
 // hides/shows element
@@ -90,6 +101,10 @@ var updateScore = function(amount) {
   score += amount
   scoreText.text = 'score: ' + score.toString()
   endScreenScore.text = 'Congratulations!\n You Scored:\n ' + score.toString()
+
+  if (score >= level2) {
+    chickenAnimationTime = 2000
+  }
 }
 
 var moveChicken = function(chickenObject) {
@@ -99,7 +114,7 @@ var moveChicken = function(chickenObject) {
     mirror: false
   })
   var chicken = chickenObject.element
-  var sampler = Animation.samplers.linear(27, -40)
+  var sampler = Animation.samplers.linear(27, -30)
   var animationSignal = Animation.animate(driver, sampler)
   chickenObject.animationSignal = animationSignal
   chickenObject.animationDriver = driver
@@ -108,7 +123,8 @@ var moveChicken = function(chickenObject) {
   driver.start()
 
   driver.onCompleted().subscribe(function(e) {
-    if (gameState === 'playing') randomInterval(chickenObject)
+    if (gameState === 'playing' && fallMode == 'multiple') randomInterval(chickenObject)
+    if (gameState === 'playing' && fallMode == 'single') randomChicken()
   })
 
   // monitor chicken off screen for lose life
@@ -116,8 +132,7 @@ var moveChicken = function(chickenObject) {
     .lt(loseLifeBoundary)
     .monitor()
     .subscribe(function(e) {
-      Diagnostics.log('LOSE LIFE')
-      var thisChicken = chicken
+      const thisChicken = chicken
       updateLives(-1)
     })
 }
@@ -136,7 +151,6 @@ var mouthSub = mouthIsOpen.monitor().subscribe(function(e) {
 
       if (collision(mouthX, mouthY, chickenX, chickenY, maxXdistance, maxYdistance)) {
         updateScore(5)
-        Diagnostics.log('EAT!')
         chickenObject.animationDriver.reset()
       }
     })
@@ -144,14 +158,6 @@ var mouthSub = mouthIsOpen.monitor().subscribe(function(e) {
     // e.unsubscribe()
   }
 })
-
-var collision = function(x1, y1, x2, y2, distanceX, distanceY) {
-  var xs = x2 - x1
-  var ys = y2 - y1
-  xs *= xs
-  ys *= ys
-  return Math.hypot(x2 - x1, y2 - y1) <= distanceX
-}
 
 // start game
 var startGame = function() {
@@ -162,11 +168,16 @@ var startGame = function() {
   faceTracker.hidden = false
   scoreTextContainer.hidden = false
   startScreen.hidden = true
+  chickenAnimationTime = startAnimationTime
   updateLivesDisplay(lives)
 
-  chickens.forEach(function(chicken) {
-    randomInterval(chicken)
-  })
+  if (fallMode == 'single') {
+    randomChicken()
+  } else if (fallMode == 'multiple') {
+    chickens.forEach(function(chicken) {
+      randomInterval(chicken)
+    })
+  }
 }
 
 var updateLives = function(amount) {
@@ -199,14 +210,16 @@ var endGame = function() {
   showEndScreen(true)
 
   chickens.forEach(function(chicken) {
-    chicken.animationDriver.reset()
-    chicken.animationDriver.stop()
-    Time.clearTimeout(chicken.randomTimeId)
+    if (chicken.animationDriver) {
+      chicken.animationDriver.reset()
+      chicken.animationDriver.stop()
+    }
+    if (chicken.randomTimeId) Time.clearTimeout(chicken.randomTimeId)
   })
 }
 
 // after tap to restart, restart the game
-var restartGame = function() {
+const restartGame = () => {
   showEndScreen(false)
   score = 0
   startGame()
@@ -222,12 +235,28 @@ var restartTapRegistrar = function(element) {
 var startTapRegistrar = function(element) {
   TouchGestures.onTap(element).subscribe(function(event) {
     Diagnostics.log('start!')
-    startGame()
+    show(countdownContainer)
+    countdown(
+      5,
+      0,
+      1000,
+      count => updateText(countdownText, count.toString()),
+      () => {
+        hide(countdownContainer)
+        startGame()
+      }
+    )
   })
 }
+
+const updateText = (element, text) => {
+  element.text = text
+}
+
+const toggle = (element, hide) => (element.hidden = hide)
+const hide = element => toggle(element, true)
+const show = element => toggle(element, false)
 
 // subscribe to restart button tap
 restartTapRegistrar(restartButton)
 startTapRegistrar(startButton)
-// start the game
-// startGame()
