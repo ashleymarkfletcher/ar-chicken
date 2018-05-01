@@ -1,5 +1,4 @@
 var Time = require('Time')
-var Diagnostics = require('Diagnostics')
 
 const countdown = (from, to, time, everyTime, onComplete) => {
   let count = from
@@ -10,11 +9,10 @@ const countdown = (from, to, time, everyTime, onComplete) => {
 
       if (count !== to) timer()
       else onComplete(count)
-
       count--
     }, time)
 
-  timer()
+  return timer()
 }
 
 export default countdown
