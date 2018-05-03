@@ -1,3 +1,4 @@
+// The requires don't get left intact by webpack by using the externals in the config
 var Scene = require('Scene')
 var Diagnostics = require('Diagnostics')
 var TouchGestures = require('TouchGestures')
@@ -6,8 +7,8 @@ var FaceTracking = require('FaceTracking')
 var Animation = require('Animation')
 var Reactive = require('Reactive')
 
-import countdown from './countdown'
-import collision from './collision'
+// import countdown from './countdown'
+// import collision from './collision'
 import {
   toggle,
   hide,
@@ -18,7 +19,9 @@ import {
   hideMultiple,
   showMultiple,
   randomNum,
-  randomElement
+  randomElement,
+  collision,
+  countdown
 } from './util'
 
 // main scene objects
@@ -26,22 +29,27 @@ const sceneRoot = Scene.root
   .child('Device')
   .child('Camera')
   .child('Focal Distance')
-const scoreTextContainer = sceneRoot.child('2DCanvas0')
+
+// score
+const scoreTextContainer = sceneRoot.child('scoreContainer')
 const scoreText = scoreTextContainer.child('scoreText')
+
+// lives
 const livesText = sceneRoot
   .child('lives')
   .child('2DCanvas1')
   .child('text1')
+
+// face
 const faceTracker = Scene.root
   .child('Device')
   .child('Camera')
   .child('Focal Distance')
   .child('facetracker0')
-
+const mouthCenter = FaceTracking.face(0).mouth.center
 const mouthIsOpen = FaceTracking.face(0)
   .mouth.openness.gt(0.3)
   .and(FaceTracking.count.gt(0))
-const mouthCenter = FaceTracking.face(0).mouth.center
 
 // start screen
 const startScreen = sceneRoot.child('startScreen')
@@ -104,12 +112,12 @@ const randomInterval = chicken => {
   }, randomTime)
 }
 
-const randomChicken = () => moveChicken(randomElement(chickens))
+const moveRandomChicken = () => moveChicken(randomElement(chickens))
 
 const updateScore = amount => {
   score += amount
   updateText(scoreText, 'score: ' + score.toString())
-  updateText(endScreenScore, 'Congratulations!\n You Scored:\n ' + score.toString())
+  updateText(endScreenScore, 'Congratulations!\n\n You Scored:\n\n ' + score.toString())
 
   // Test for Leveling up
   // if (score >= level2) {
@@ -135,7 +143,7 @@ const moveChicken = chicken => {
 
   driver.onCompleted().subscribe(e => {
     if (gameState === 'playing' && fallMode == 'multiple') randomInterval(chicken)
-    if (gameState === 'playing' && fallMode == 'single') randomChicken()
+    if (gameState === 'playing' && fallMode == 'single') moveRandomChicken()
   })
 
   // monitor chicken off screen for life--
@@ -159,6 +167,7 @@ const mouthSub = mouthIsOpen.monitor().subscribe(e => {
 
       if (collision(mouthX, mouthY, chickenX, chickenY, maxXdistance, maxYdistance)) {
         updateScore(5)
+        // move chicken back to top
         chicken.animationDriver.reset()
       }
     })
@@ -167,19 +176,37 @@ const mouthSub = mouthIsOpen.monitor().subscribe(e => {
   }
 })
 
+const countdownAnimation = () => {
+  let driver = Animation.timeDriver({
+    durationMilliseconds: 1000,
+    loopCount: 12, // can be Infinity
+    mirror: false
+  })
+
+  // let chicken = chicken.element
+  const sampler = Animation.samplers.easeOutCubic(1, 1.5)
+  const animationSignal = Animation.animate(driver, sampler)
+
+  countdownContainer.transform.scaleX = animationSignal
+  countdownContainer.transform.scaleY = animationSignal
+  // countdownContainer.transform.scaleZ = animationSignal
+
+  driver.start()
+}
+
 // start game
 const startGame = () => {
   gameState = 'playing'
+  score = 0
   updateText(scoreText, 'score: ' + score.toString())
   lives += initialLives
   hide(startScreen)
   showMultiple([livesContainer, faceTracker, scoreTextContainer])
   chickenAnimationTime = startAnimationTime
-  score = 0
   updateLivesDisplay(lives)
 
   if (fallMode == 'single') {
-    randomChicken(numChickens)
+    moveRandomChicken(numChickens)
   } else if (fallMode == 'multiple') {
     chickens.forEach(chicken => {
       randomInterval(chicken)
@@ -189,7 +216,6 @@ const startGame = () => {
 
 const updateLives = amount => {
   if (!lives) {
-    Diagnostics.log('game over!')
     endGame()
   } else {
     lives += amount
@@ -204,16 +230,11 @@ const updateLivesDisplay = numLives => {
   })
 }
 
-const showEndScreen = show => {
-  updateText(endScreenScore, 'Congratulations!\n You Scored:\n ' + score.toString())
-  toggle(endScreen, !show)
-}
-
 const endGame = () => {
   gameState = 'stopped'
-
   hideMultiple([livesContainer, faceTracker, scoreTextContainer])
-  showEndScreen(true)
+  updateText(endScreenScore, 'Congratulations!\n\n You Scored:\n\n ' + score.toString())
+  show(endScreen)
 
   chickens.forEach(chicken => {
     if (chicken.animationDriver) {
@@ -226,18 +247,18 @@ const endGame = () => {
 
 // after tap to restart, restart the game
 const restartGame = () => {
-  showEndScreen(false)
+  hide(endScreen)
   startGame()
 }
 
 // subscribe to restart/start button taps
 const startTap = tapRegistrar(startButton, event => {
-  Diagnostics.log('start!')
   hide(startScreen)
   show(countdownContainer)
 
+  countdownAnimation()
   countdown(
-    5,
+    3,
     0,
     1000,
     count => updateText(countdownText, count.toString()),
@@ -249,6 +270,5 @@ const startTap = tapRegistrar(startButton, event => {
 })
 
 const restartTap = tapRegistrar(restartButton, event => {
-  Diagnostics.log('restart!')
   restartGame()
 })
