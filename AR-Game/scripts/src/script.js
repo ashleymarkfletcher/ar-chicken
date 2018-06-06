@@ -7,8 +7,6 @@ var FaceTracking = require('FaceTracking')
 var Animation = require('Animation')
 var Reactive = require('Reactive')
 
-// import countdown from './countdown'
-// import collision from './collision'
 import {
   toggle,
   hide,
@@ -215,10 +213,10 @@ const startGame = () => {
 }
 
 const updateLives = amount => {
+  lives += amount
   if (!lives) {
     endGame()
   } else {
-    lives += amount
     updateLivesDisplay(lives)
   }
 }
